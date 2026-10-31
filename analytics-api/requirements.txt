@@ -1,0 +1,5 @@
+fastapi
+uvicorn[standard]
+pandas
+openpyxl
+psycopg[binary]>=3.2,<4
