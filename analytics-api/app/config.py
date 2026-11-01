@@ -3,7 +3,7 @@
 import os
 from pathlib import Path
 
-DATA_DIR = Path("/analytics-api/app/data")
+DATA_DIR = Path("/analytics-api/data")
 OUTPUT_DIR = Path("/app/output")
 ALLOWED_EXTENSIONS = {".csv", ".xlsx", ".xls"}
 
