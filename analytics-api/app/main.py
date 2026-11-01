@@ -215,11 +215,11 @@ def validate_dataset(
     filename: str = Query(..., description="Dataset filename"),
 ) -> dict[str, Any]:
 
-    logger.warning("VALIDATE ENTERED")
+    print(f"Starting validation: {filename}", flush=True)
 
     df = load_dataset(filename)
 
-    logger.warning("DATASET LOADED: %s rows", len(df))
+    print(f"Excel loaded: {len(df)} rows", flush=True)
 
     checks: list[dict[str, Any]] = []
 
@@ -248,19 +248,35 @@ def validate_dataset(
             "passed": False,
             "checks": checks,
             "summary": {
-                "errors": sum(c["severity"] == "error" for c in checks),
-                "warnings": sum(c["severity"] == "warning" for c in checks),
-                "info": sum(c["severity"] == "info" for c in checks),
+                "errors": sum(
+                    c["severity"] == "error" for c in checks
+                ),
+                "warnings": sum(
+                    c["severity"] == "warning" for c in checks
+                ),
+                "info": sum(
+                    c["severity"] == "info" for c in checks
+                ),
             },
-            "note": "Retail-specific checks stopped because columns are missing.",
+            "note": (
+                "Retail-specific checks stopped because "
+                "columns are missing."
+            ),
         }
 
+    # Exact duplicate rows are flagged, not automatically removed.
+    print("Starting duplicate check", flush=True)
 
-    logger = logging.getLogger("uvicorn.error")
-
-    logger.warning("Starting duplicate check")
     duplicate_mask = df.duplicated(keep=False)
-    logger.warning("Duplicate check complete")
+
+    print("Duplicate mask created", flush=True)
+
+    duplicate_count = int(df.duplicated().sum())
+
+    print(
+        f"Duplicate count calculated: {duplicate_count}",
+        flush=True,
+    )
 
     add_check(
         checks,
@@ -275,8 +291,15 @@ def validate_dataset(
         sample_rows=excel_row_numbers(duplicate_mask),
     )
 
+    print("Duplicate check complete", flush=True)
+
     # Missing values in fields important for transaction analysis.
-    for column in ["InvoiceNo", "InvoiceDate", "Quantity", "UnitPrice"]:
+    for column in [
+        "InvoiceNo",
+        "InvoiceDate",
+        "Quantity",
+        "UnitPrice",
+    ]:
         missing_mask = df[column].isna()
         missing_count = int(missing_mask.sum())
 
@@ -306,7 +329,9 @@ def validate_dataset(
             sample_rows=excel_row_numbers(missing_mask),
         )
 
-    # Convert values for validation only; the original DataFrame is unchanged.
+    # Convert values for validation only; source DataFrame is unchanged.
+    print("Starting numeric validation", flush=True)
+
     quantity = pd.to_numeric(df["Quantity"], errors="coerce")
     unit_price = pd.to_numeric(df["UnitPrice"], errors="coerce")
 
@@ -324,11 +349,15 @@ def validate_dataset(
             name=name,
             severity="error" if count else "info",
             count=count,
-            message=f"{count} rows contain values that cannot be parsed numerically.",
+            message=(
+                f"{count} rows contain values that cannot "
+                "be parsed numerically."
+            ),
             sample_rows=excel_row_numbers(mask),
         )
 
-    # Zero and negative quantities/prices are findings, not automatic failures.
+    # Zero and negative quantities/prices are findings,
+    # not automatic failures.
     quantity_checks = [
         (
             "zero_quantity",
@@ -346,7 +375,10 @@ def validate_dataset(
             "zero_unit_price",
             unit_price.eq(0),
             "warning",
-            "Zero-price rows need investigation; they may have a valid business reason.",
+            (
+                "Zero-price rows need investigation; they may have "
+                "a valid business reason."
+            ),
         ),
         (
             "negative_unit_price",
@@ -368,10 +400,14 @@ def validate_dataset(
             sample_rows=excel_row_numbers(mask),
         )
 
-    # Cancellation invoices are identified by an InvoiceNo starting with C.
+    # Cancellation invoices are identified by InvoiceNo starting with C.
+    print("Starting cancellation validation", flush=True)
+
     invoice_text = df["InvoiceNo"].astype("string").str.strip()
+
     cancellation_mask = invoice_text.str.upper().str.startswith(
-        "C", na=False
+        "C",
+        na=False,
     )
 
     add_check(
@@ -387,7 +423,13 @@ def validate_dataset(
     )
 
     # Validate invoice dates without overwriting the source column.
-    parsed_dates = pd.to_datetime(df["InvoiceDate"], errors="coerce")
+    print("Starting date validation", flush=True)
+
+    parsed_dates = pd.to_datetime(
+        df["InvoiceDate"],
+        errors="coerce",
+    )
+
     invalid_dates = df["InvoiceDate"].notna() & parsed_dates.isna()
 
     add_check(
@@ -395,28 +437,52 @@ def validate_dataset(
         name="unparseable_invoice_dates",
         severity="error" if invalid_dates.any() else "info",
         count=int(invalid_dates.sum()),
-        message="Non-empty InvoiceDate values that pandas could not parse.",
+        message=(
+            "Non-empty InvoiceDate values that pandas could not parse."
+        ),
         sample_rows=excel_row_numbers(invalid_dates),
     )
 
     # Calculate indicative transaction-value totals for reconciliation.
+    print("Starting value reconciliation", flush=True)
+
     line_value = quantity * unit_price
     valid_line_value = line_value.dropna()
 
     value_summary = {
-        "rows_with_calculable_line_value": int(valid_line_value.size),
+        "rows_with_calculable_line_value": int(
+            valid_line_value.size
+        ),
         "positive_line_value_total": round(
-            float(valid_line_value[valid_line_value > 0].sum()), 2
+            float(valid_line_value[valid_line_value > 0].sum()),
+            2,
         ),
         "negative_line_value_total": round(
-            float(valid_line_value[valid_line_value < 0].sum()), 2
+            float(valid_line_value[valid_line_value < 0].sum()),
+            2,
         ),
-        "net_line_value_total": round(float(valid_line_value.sum()), 2),
+        "net_line_value_total": round(
+            float(valid_line_value.sum()),
+            2,
+        ),
     }
 
-    errors = sum(check["severity"] == "error" for check in checks)
-    warnings = sum(check["severity"] == "warning" for check in checks)
-    info = sum(check["severity"] == "info" for check in checks)
+    errors = sum(
+        check["severity"] == "error"
+        for check in checks
+    )
+
+    warnings = sum(
+        check["severity"] == "warning"
+        for check in checks
+    )
+
+    info = sum(
+        check["severity"] == "info"
+        for check in checks
+    )
+
+    print("Validation complete", flush=True)
 
     return {
         "dataset": filename,
