@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Any
 from pathlib import Path
 
@@ -214,11 +215,11 @@ def validate_dataset(
     filename: str = Query(..., description="Dataset filename"),
 ) -> dict[str, Any]:
 
-    print(f"Starting validation: {filename}", flush=True)
+    logger.warning("VALIDATE ENTERED")
 
     df = load_dataset(filename)
 
-    print(f"Excel loaded: {len(df)} rows", flush=True)
+    logger.warning("DATASET LOADED: %s rows", len(df))
 
     checks: list[dict[str, Any]] = []
 
@@ -254,8 +255,6 @@ def validate_dataset(
             "note": "Retail-specific checks stopped because columns are missing.",
         }
 
-    # Exact duplicate rows are flagged, not automatically removed.
-    import logging
 
     logger = logging.getLogger("uvicorn.error")
 
