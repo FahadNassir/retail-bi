@@ -213,13 +213,13 @@ def profile_dataset(
 def validate_dataset(
     filename: str = Query(..., description="Dataset filename"),
 ) -> dict[str, Any]:
-    """
-    Run retail-specific quality checks.
 
-    This endpoint reports issues. It does not delete or alter records.
-    """
+    print(f"Starting validation: {filename}", flush=True)
 
     df = load_dataset(filename)
+
+    print(f"Excel loaded: {len(df)} rows", flush=True)
+
     checks: list[dict[str, Any]] = []
 
     # Required columns determine whether retail-specific checks are possible.
