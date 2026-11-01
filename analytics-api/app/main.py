@@ -255,7 +255,9 @@ def validate_dataset(
         }
 
     # Exact duplicate rows are flagged, not automatically removed.
+    print("Starting duplicate check", flush=True)
     duplicate_mask = df.duplicated(keep=False)
+    print("Duplicate check complete", flush=True)
     duplicate_count = int(df.duplicated().sum())
 
     add_check(
