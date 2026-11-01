@@ -255,10 +255,13 @@ def validate_dataset(
         }
 
     # Exact duplicate rows are flagged, not automatically removed.
-    print("Starting duplicate check", flush=True)
+    import logging
+
+    logger = logging.getLogger("uvicorn.error")
+
+    logger.warning("Starting duplicate check")
     duplicate_mask = df.duplicated(keep=False)
-    print("Duplicate check complete", flush=True)
-    duplicate_count = int(df.duplicated().sum())
+    logger.warning("Duplicate check complete")
 
     add_check(
         checks,
