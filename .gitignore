@@ -5,8 +5,8 @@
 !.env.example
 
 # Local data and generated output
-data/*
-!data/.gitkeep
+# data/*
+# !data/.gitkeep
 output/*
 !output/.gitkeep
 

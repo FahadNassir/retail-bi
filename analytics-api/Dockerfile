@@ -10,6 +10,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app/ ./app/
+COPY data/ /analytics-api/data/
 
 # The API listens inside the container.
 # EXPOSE 8000
